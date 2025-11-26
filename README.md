@@ -23,10 +23,10 @@ Personal repository for learning and experimenting with data engineering and AI 
 
 data-ai-training/
 │
-├── README.md
-├── .gitignore
-├── requirements.txt
-├── environment.yml (or pyproject.toml)
+├── README.md  
+├── .gitignore  
+├── requirements.txt  
+├── environment.yml (or pyproject.toml)  
 │
 ├── data-engineering/
 │   ├── README.md
