@@ -27,81 +27,81 @@ data-ai-training/
 ├── .gitignore  
 ├── requirements.txt  
 ├── environment.yml (or pyproject.toml)  
-│
-├── data-engineering/
-│   ├── README.md
-│   ├── etl-pipelines/
-│   │   ├── batch-processing/
-│   │   ├── streaming/
-│   │   └── notebooks/
+│  
+├── data-engineering/  
+│   ├── README.md  
+│   ├── etl-pipelines/  
+│   │   ├── batch-processing/  
+│   │   ├── streaming/  
+│   │   └── notebooks/  
 │   ├── data-warehousing/
-│   │   ├── sql-queries/
-│   │   ├── dbt-models/
-│   │   └── schema-design/
-│   ├── data-quality/
-│   │   ├── validation/
-│   │   └── profiling/
-│   └── orchestration/
-│       ├── airflow-dags/
-│       └── prefect-flows/
+│   │   ├── sql-queries/  
+│   │   ├── dbt-models/  
+│   │   └── schema-design/  
+│   ├── data-quality/  
+│   │   ├── validation/  
+│   │   └── profiling/  
+│   └── orchestration/  
+│       ├── airflow-dags/  
+│       └── prefect-flows/  
+│  
+├── machine-learning/  
+│   ├── README.md    
+│   ├── supervised-learning/  
+│   │   ├── classification/  
+│   │   ├── regression/  
+│   │   └── notebooks/  
+│   ├── unsupervised-learning/  
+│   │   ├── clustering/  
+│   │   ├── dimensionality-reduction/  
+│   │   └── notebooks/  
+│   ├── deep-learning/  
+│   │   ├── computer-vision/  
+│   │   ├── nlp/  
+│   │   ├── time-series/  
+│   │   └── notebooks/  
+│   └── model-deployment/  
+│       ├── api-services/  
+│       └── docker/  
 │
-├── machine-learning/
+├── mlops/  
 │   ├── README.md
-│   ├── supervised-learning/
-│   │   ├── classification/
-│   │   ├── regression/
-│   │   └── notebooks/
-│   ├── unsupervised-learning/
-│   │   ├── clustering/
-│   │   ├── dimensionality-reduction/
-│   │   └── notebooks/
-│   ├── deep-learning/
-│   │   ├── computer-vision/
-│   │   ├── nlp/
-│   │   ├── time-series/
-│   │   └── notebooks/
-│   └── model-deployment/
-│       ├── api-services/
-│       └── docker/
+│   ├── experiment-tracking/  
+│   ├── model-registry/  
+│   ├── monitoring/  
+│   └── ci-cd/  
 │
-├── mlops/
-│   ├── README.md
-│   ├── experiment-tracking/
-│   ├── model-registry/
-│   ├── monitoring/
-│   └── ci-cd/
+├── big-data/  
+│   ├── README.md  
+│   ├── spark/  
+│   ├── hadoop/  
+│   └── distributed-computing/  
 │
-├── big-data/
-│   ├── README.md
-│   ├── spark/
-│   ├── hadoop/
-│   └── distributed-computing/
-│
-├── cloud-platforms/
-│   ├── README.md
-│   ├── aws/
-│   ├── azure/
-│   └── gcp/
-│
-├── notebooks/
-│   ├── exploratory/
-│   ├── tutorials/
-│   └── experiments/
-│
-├── datasets/
-│   ├── README.md
-│   └── .gitkeep (datasets should ideally be referenced, not stored)
-│
-├── utils/
-│   ├── data_processing/
-│   ├── visualization/
-│   └── helpers/
-│
-├── tests/
-│   ├── unit/
-│   └── integration/
-│
-└── docs/
-    ├── learning-notes/
-    ├── best-practices/
-    └── resources.md
+├── cloud-platforms/  
+│   ├── README.md  
+│   ├── aws/  
+│   ├── azure/  
+│   └── gcp/  
+│    
+├── notebooks/  
+│   ├── exploratory/  
+│   ├── tutorials/  
+│   └── experiments/  
+│  
+├── datasets/  
+│   ├── README.md  
+│   └── .gitkeep (datasets should ideally be referenced, not stored)  
+│  
+├── utils/  
+│   ├── data_processing/  
+│   ├── visualization/  
+│   └── helpers/  
+│  
+├── tests/  
+│   ├── unit/  
+│   └── integration/  
+│  
+└── docs/  
+    ├── learning-notes/    
+    ├── best-practices/  
+    └── resources.md  
