@@ -1,0 +1,10 @@
+# Jupyter Notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+*.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# Weaviate/Docker
+weaviate_data/
