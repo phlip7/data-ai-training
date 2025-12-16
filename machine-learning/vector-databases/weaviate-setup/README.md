@@ -139,6 +139,11 @@ docker ps
 curl http://localhost:8080/v1/meta
 ```
 
+### install llama3 model
+```bash
+# pull ollama model
+ollama pull llama3
+
 ## Troubleshooting
 
 ### Conda Environment Not Found

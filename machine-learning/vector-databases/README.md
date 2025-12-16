@@ -32,3 +32,22 @@ The integration of AI techniques in vector databases enhances their capabilities
 # Vector DB can find that "dog" and "puppy" are similar
 # even though they're different words
 ```
+
+## Scalability  
+Vector databases are optimized for handling tens of millions to billions of data objects, enabling real-time searches even with large datasets.
+
+Vector databases use a class of algorithm called ANN to find which vectors are 
+in the neighboorhood of a query vector.
+
+- Approximate Nearest Neighbors (ANN): This algorithm allows efficient searching by finding vectors close to the query vector without comparing every stored vector, trading some accuracy for speed.
+
+- Hierarchical Navigable Small Worlds (HNSW): A popular ANN algorithm that builds a graph of vectors, enabling efficient searches by navigating through different levels of the graph to find the closest neighbors.
+
+## Ways to measure the performance of a vector DB
+These metrics help assess the performance and efficiency of vector databases.
+
+- Recall: Measures how accurately the database retrieves the nearest neighbors. Higher recall means better accuracy. How reliable it returns the correct nearest neighbors.
+- Queries Per Second (QPS): Indicates the speed of the database, showing how many queries can be processed per second. Higher QPS means better performance. How fast is it.
+- Memory Usage: Refers to the amount of RAM required to run the database. Lower memory usage is ideal as it reduces costs. How much memory it costs to run the queries.
+
+The trade off is between QPS and recall.
