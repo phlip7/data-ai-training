@@ -1,15 +1,48 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Windows / Linux (collaborateurs éventuels)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*~
+
 # Jupyter Notebooks
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 *.ipynb_checkpoints/
 
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+*.egg-info/
 
-# Environment variables
+# Secrets — ne JAMAIS committer
 .env
+.env.*
+!.env.example
+*.key
+*_key.txt
+*-key.txt
+credentials.json
+secrets.yaml
+*.pem
 
-# Weaviate/Docker
-weaviate_data/.DS_Store
+# IDE
+.vscode/
+.idea/
+
+# Données volumineuses / sorties locales
+weaviate_data/
+*.duckdb
