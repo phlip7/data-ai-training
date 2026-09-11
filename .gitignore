@@ -12,4 +12,4 @@ __pycache__/
 .env
 
 # Weaviate/Docker
-weaviate_data/
+weaviate_data/.DS_Store
