@@ -10,7 +10,7 @@
 | 2 | Data Ingestion and Loading | 21 % | ✅ |
 | 3 | Data Transformation and Modeling | 22 % | ✅ |
 | 4 | Working with Lakeflow Jobs | 16 % | ✅ |
-| 5 | Implementing CI/CD | 10 % | ⬜ **vide — à écrire** |
+| 5 | Implementing CI/CD | 10 % | 🟨 **partiel — DAB seulement** |
 | 6 | Troubleshooting, Monitoring, and Optimization | 10 % | ✅ |
 | 7 | Governance and Security | 15 % | ✅ |
 
@@ -35,7 +35,7 @@ L'ordre de construction, de bas en haut :
 ## 1.2 Les composants de Databricks Lakeflow
 Lakeflow **unifie les activités de data engineering** en 4 composants :
 - **Connectors** → **Lakeflow Connect** (l'*ingest layer*) — voir §2.5
-- **Pipelines** → **Spark Declarative Pipelines** (ex-DLT)
+- **Pipelines** → **Spark Declarative Pipelines** (ex-DLT) — voir §3.8 → §3.11
 - **Jobs** → **Lakeflow Jobs** — voir §4
 - **Processing Engine** → **Spark + Structured Streaming** (accéléré par Photon)
 
@@ -192,7 +192,7 @@ Sur Databricks c'est souvent le **même code Structured Streaming** — seul le 
   - **Managed Connectors** : pour les **applications d'entreprise et bases de données** → ingestion incrémentale **scalable et efficace** dans le lakehouse.
   - ➡️ **Standard vs Managed — comment trancher : Annexe A.5.**
 - **3 méthodes d'ingestion** (transverses aux connecteurs) : **Batch** · **Incremental batch** · **Streaming**.
-- **Spark Declarative Pipelines** (évolution déclarative type DLT) = ingestion + transformation, pour bâtir des pipelines **medallion** : **bronze → silver → gold**, avec fiabilité et scalabilité.
+- **Spark Declarative Pipelines** (évolution déclarative type DLT) = ingestion + transformation, pour bâtir des pipelines **medallion** : **bronze → silver → gold**, avec fiabilité et scalabilité. ➡️ Framework, datasets et expectations : **§3.8 → §3.11**.
 - 🧠 **Modèle mental :** *Lakeflow Connect fait entrer la donnée → Spark Declarative Pipelines la fait progresser bronze→silver→gold.*
 
 ## 2.6 Managed Ingestion & Ingestion Gateway Pipeline
@@ -378,8 +378,116 @@ Delta en open source : package `delta-spark` (`--packages io.delta:delta-spark_2
 🧠 **Modèle mental :** *« Schema evolution = Delta ajoute les colonnes nouvelles à ma place, à 3 moments : quand je MERGE, quand j'écris, quand j'ingère. »*
 ⚠️ Ça **ajoute** des colonnes ; ça ne gère pas tous les **changements de type**. À utiliser sciemment (une colonne parasite en amont se propage dans la table).
 
-## 3.8 Qualité dans les pipelines déclaratifs
-- **DLT expectations** : contraintes qualité — `EXPECT` (log seulement), `EXPECT OR DROP` (écarte la ligne), `EXPECT OR FAIL` (fait échouer le pipeline).
+## 3.8 Spark Declarative Pipelines (SDP) — le framework
+**Définition.** Framework déclaratif **natif à Apache Spark** qui simplifie le développement ETL : on passe du **code DataFrame impératif** à une structure unifiée où l'on déclare **quels datasets doivent exister**, plutôt que **comment les exécuter**.
+
+🧠 **Modèle mental :** *j'arrête d'écrire « lis ceci, transforme, écris là » ; je déclare « cette table existe et voici sa définition » — le moteur gère l'ordre, les dépendances et les rafraîchissements.*
+
+**Les décorateurs Python :**
+| Décorateur | Crée | Type de lecture |
+|---|---|---|
+| `@dp.table` | une **table** (streaming si la source est un `readStream`) | streaming |
+| `@dp.materialized_view` | une **materialized view** à partir du résultat de la fonction | **batch** (`spark.read`) |
+
+```python
+from pyspark import pipelines as dp
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import col
+
+@dp.table
+def orders() -> DataFrame:
+    return (
+        spark.readStream
+        .format("kafka")
+        .option("kafka.bootstrap.servers", "localhost:9092")
+        .option("subscribe", "orders")
+        .load()
+    )
+
+@dp.materialized_view
+def customers() -> DataFrame:
+    return (
+        spark.read
+        .format("csv")
+        .option("header", True)
+        .load("/datasets/retail-org/customers")
+    )
+```
+⚠️ **Le point à retenir :** `@dp.table` + `readStream` = **streaming** · `@dp.materialized_view` + `spark.read` = **batch**. Le décorateur et le type de lecture vont ensemble.
+
+## 3.9 Les 3 types de datasets d'un pipeline déclaratif ⭐
+Lakeflow Declarative Pipelines supporte **3 types de datasets**, chacun pour un type de traitement différent :
+
+| Type | Ce que c'est | Traitement |
+|---|---|---|
+| **Streaming Table (ST)** | table avec support du traitement **streaming / incrémental** | **uniquement les nouvelles données** |
+| **Materialized View (MV)** | vue **matérialisée** : les enregistrements sont traités **autant que nécessaire pour renvoyer un résultat juste sur l'état courant** des données | recalcul (incrémental si possible) |
+| **View** | **table virtuelle, sans données physiques**, basée sur la requête | à chaque lecture |
+
+**Materialized View — à quoi ça sert :**
+- Transformations
+- Agrégations
+- **Pré-calcul de requêtes lentes**
+- Calculs fréquemment réutilisés
+
+> **Rafraîchissement d'une MV :** quand c'est possible, le système utilise un **refresh incrémental** plutôt que de tout reconstruire. Supporté sur **compute Serverless**, piloté par un **optimiseur basé sur les coûts**.
+
+**View — 2 variantes :** `TEMPORARY VIEW` · `VIEW`.
+
+🧠 **Modèle mental :** *ST = « que du nouveau » · MV = « le bon résultat sur l'état actuel » · View = « juste une requête nommée ».*
+
+## 3.10 Expectations — la qualité de données ligne par ligne ⭐
+Les **expectations** sont des règles de qualité appliquées **pendant l'ETL**. Elles valident les données **ligne par ligne** pour garantir l'intégrité.
+
+### Syntaxe SQL
+```sql
+CONSTRAINT constraint_name
+EXPECT (column_condition)
+[ON VIOLATION action]
+```
+
+### Les 3 actions
+| Action | Syntaxe | Comportement sur une ligne en échec |
+|---|---|---|
+| **WARN** *(défaut)* | `EXPECT (cond)` — pas de clause `ON VIOLATION` | l'échec est **journalisé**, la ligne est **conservée**, le pipeline continue |
+| **DROP** | `ON VIOLATION DROP ROW` | la ligne est **écartée**, le pipeline continue |
+| **FAIL** | `ON VIOLATION FAIL UPDATE` | le pipeline **échoue immédiatement pour ce flow** → **intervention manuelle requise**. **Les autres flows ne sont pas affectés.** |
+
+### Exemple complet
+```sql
+CREATE OR REFRESH STREAMING TABLE 2_silver_db.orders_silver
+ (
+   CONSTRAINT valid_notifications EXPECT (notifications IN ('Y','N')),
+   CONSTRAINT valid_date  EXPECT (order_timestamp > "2021-01-01") ON VIOLATION FAIL UPDATE,
+   CONSTRAINT valid_id    EXPECT (customer_id IS NOT NULL)        ON VIOLATION DROP ROW
+ )
+AS
+SELECT
+  order_id,
+  timestamp(order_timestamp) AS order_timestamp,
+  customer_id,
+  notifications
+FROM STREAM 1_bronze_db.orders_bronze;
+```
+
+### Le parcours d'une ligne
+1. Une ligne entre dans le pipeline.
+2. Elle est évaluée contre **toutes** les expectations définies.
+   - **Passe** → conservée, traitement normal.
+   - **Échoue** → l'**action de la contrainte** décide : WARN (garde + log) · DROP (écarte) · FAIL (stoppe ce flow).
+
+⚠️ **Depuis Q2 2025** : toute **materialized view utilisant des expectations** est **toujours entièrement rafraîchie** (full refresh) lors des exécutions du pipeline — plus de refresh incrémental dans ce cas.
+
+## 3.11 Streaming joins dans les pipelines déclaratifs
+Les 3 types de jointures impliquant une streaming table, et leur comportement :
+
+| Type de join | Sources | Type de sortie | Données traitées | Au programme ? |
+|---|---|---|---|---|
+| **Stream-Snapshot** | Streaming + **Static** | **Streaming Table** | **nouvelles lignes seulement** | ✅ oui |
+| **MV Join** | Streaming + Streaming | **Materialized View** | **toutes les lignes à chaque run** | ✅ oui |
+| **Stream-Stream** | Streaming + Streaming | **Streaming Table** | nouvelles lignes seulement (**fenêtré**) | ⚠️ avancé seulement |
+
+🧠 **Modèle mental :** *le type de sortie te dit le coût. Sortie **ST** = incrémental (pas cher) · sortie **MV** = tout est recalculé à chaque run.*
 
 ---
 
@@ -448,9 +556,25 @@ dbutils.jobs.taskValues.get(taskKey="...", key="...")
 
 # 5. Implementing CI/CD — 10 %
 
-⬜ **Section vide — aucun élément dans mes notes actuelles.**
+## 5.1 DAB — Declarative Automation Bundles
 
-*À couvrir (d'après l'intitulé du domaine) :* Databricks Asset Bundles, Repos / Git folders, gestion des environnements dev→staging→prod, déploiement de jobs et pipelines, tests.
+> ⚠️ **Terminologie (piège d'examen) :** **Declarative Automation Bundles**, **anciennement « Databricks Asset Bundles »**. Renommage effectif **mars 2026** (CLI v0.287+). L'abréviation reste **DAB**, le changement est **non-breaking** : ni la commande CLI `bundle` ni les configs existantes ne changent. Selon l'ancienneté du support d'examen, les deux noms peuvent apparaître.
+
+**Recommandation Databricks :** utiliser les **DAB** pour **créer, développer, déployer et tester** des jobs et autres ressources Databricks.
+
+**Ce que c'est.** Un outil qui **encapsule toutes les configurations et artefacts nécessaires** d'un projet Databricks dans un bundle → le projet devient déployable de façon reproductible.
+
+## 5.2 Pourquoi les DAB — les 4 pratiques de génie logiciel couvertes
+Les DAB existent pour faire entrer les **bonnes pratiques de software engineering** dans les projets data & IA. Les 4 questions auxquelles ils répondent :
+
+| Pratique | La question posée |
+|---|---|
+| **Version Control** | comment suit-on les changements et garde-t-on l'**historique** des modifications de code ? |
+| **Code Review** | comment maintient-on la **qualité** du code et le respect des standards ? |
+| **Testing** | le comportement du code est-il **cohérent et prévisible** ? |
+| **Continuous Integration** | automatise-t-on l'**intégration des changements** dans le dépôt ? |
+
+🧠 **Modèle mental :** *le DAB est le paquet qui transforme « mon notebook marche chez moi » en « ce pipeline se déploie pareil en dev, staging et prod ».*
 
 ---
 
@@ -637,6 +761,8 @@ L'architecture Databricks est coupée en deux. C'est **la** clé pour répondre 
 # Sources
 - Databricks official Exam Guide — structure et poids par domaine
 - **Mes notes manuscrites de révision** (`Dbr assoc revision.pdf`, 9 p., septembre 2026) — intégrées le 2026-09-12 dans §1.1→1.4, §2.1, §2.2, §2.5, §2.6, §2.8, §3.4, §4.1→4.6, §7.1, §7.2 et Annexe A
+- **Mes notes de cours** (`dbr_assoc_revision.txt`, septembre 2026) — intégrées le 2026-09-13 dans §3.8→§3.11 (SDP, datasets ST/MV/View, expectations, streaming joins) et §5 (DAB)
+- [What are Declarative Automation Bundles? — Databricks docs](https://docs.databricks.com/aws/en/dev-tools/bundles) — confirmation du renommage « Databricks Asset Bundles » → « Declarative Automation Bundles » (mars 2026, CLI v0.287+, non-breaking)
 - Databricks Academy — « Data Engineering with Databricks »
 - Derar Alhussein — Practice Exams (Udemy, V4) + O'Reilly Study Guide
 - Fondamentaux Spark (§1.1, §1.2, §3.1, §3.2, §6.1→6.4) : cheat sheet [databrickspracticetest.com](https://databrickspracticetest.com/blog/apache-spark-for-databricks-exam-key-concepts-cheat-sheet) (source **non officielle**), re-vérifié le 2026-09-11 contre :
