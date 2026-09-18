@@ -1,18 +1,27 @@
 # Databricks Certified Data Engineer Associate — Notes de révision
 
-> Notes personnelles de prép (exam : 4 août 2026). Rédigées avec mon COS.
-> Format markdown compatible GitHub + Obsidian.
-> **Organisation : 1 section = 1 domaine de l'exam guide**, avec son poids. Les points sans contenu sont laissés vides.
+> ## ✅ CERTIFICATION OBTENUE — 18 septembre 2026 (89 min / 90)
+>
+> Ces notes deviennent une **référence**, plus un support de prép. Elles restent à jour pour le travail réel et pour la prochaine certif.
 
-| # | Domaine | Poids | État des notes |
-|---|---|---|---|
-| 1 | Databricks Intelligence Platform | 6 % | ✅ |
-| 2 | Data Ingestion and Loading | 21 % | ✅ |
-| 3 | Data Transformation and Modeling | 22 % | ✅ |
-| 4 | Working with Lakeflow Jobs | 16 % | ✅ |
-| 5 | Implementing CI/CD | 10 % | 🟨 **partiel — DAB seulement** |
-| 6 | Troubleshooting, Monitoring, and Optimization | 10 % | ✅ |
-| 7 | Governance and Security | 15 % | ✅ |
+**Résultats par section — et ce que les notes en disent :**
+
+| # | Domaine | Poids | **Score obtenu** | Profondeur des notes |
+|---|---|---|---|---|
+| 1 | Databricks Intelligence Platform | 6 % | 66 % | moyenne |
+| 2 | Data Ingestion and Loading | 21 % | **88 %** 🥇 | la plus développée |
+| 3 | Data Transformation and Modeling | 22 % | **80 %** | développée |
+| 4 | Working with Lakeflow Jobs | 16 % | 71 % | développée |
+| 5 | Implementing CI/CD | 10 % | **80 %** | mince (DAB seulement) |
+| 6 | Troubleshooting, Monitoring, and Optimization | 10 % | **60 %** ⚠️ | moyenne |
+| 7 | Governance and Security | 15 % | 66 % ⚠️ | **la plus mince** |
+| | **Total pondéré** | | **≈ 75 %** | |
+
+**Lecture :** la corrélation profondeur des notes → score est nette. §2 (la plus travaillée) = 88 %. §7 Governance, signalée comme le point faible avant l'examen, sort à 66 % pour 15 % du poids — c'est le plus gros manque à gagner. §6 à 60 % est le score le plus bas.
+
+**À compléter en priorité** (pour le travail réel, plus pour l'examen) : **§7 Governance & Security** et **§6 Troubleshooting/Optimization**.
+
+*Format markdown compatible GitHub + Obsidian. Organisation : 1 section = 1 domaine de l'exam guide.*
 
 ---
 
@@ -178,7 +187,19 @@ Sur Databricks c'est souvent le **même code Structured Streaming** — seul le 
 | **DLT** (Delta Live Tables) | pipelines déclaratifs, streaming ou triggered | pipelines managés avec qualité/monitoring intégrés |
 
 - **`COPY INTO` est idempotent** : réexécuter ne recharge pas les fichiers déjà traités.
-- **Auto Loader** > COPY INTO quand le nombre de fichiers explose (suivi via checkpoint/RocksDB, pas de re-listing coûteux).
+
+### Pourquoi Auto Loader passe à l'échelle et pas `COPY INTO` ⭐
+**L'énoncé à retenir :** *Auto Loader passe mieux à l'échelle sur de gros volumes de fichiers parce qu'il peut détecter les nouveaux fichiers par **notification d'événements cloud**, alors que `COPY INTO` doit **lister le répertoire à chaque exécution**.*
+
+| | Comment les nouveaux fichiers sont détectés | Coût quand le nb de fichiers explose |
+|---|---|---|
+| **`COPY INTO`** | **liste le répertoire source à chaque run**, puis compare aux fichiers déjà chargés (métadonnées de la table) | ⚠️ le coût croît avec le **nombre total** de fichiers présents, pas avec les nouveaux |
+| **Auto Loader — directory listing** *(mode par **défaut**)* | listing **incrémental** + état persisté (checkpoint / **RocksDB**) | moins cher que COPY INTO, mais il y a encore du listing |
+| **Auto Loader — file notification** *(à activer)* | **s'abonne aux événements de fichiers du cloud** (SQS/SNS, Event Grid, Pub/Sub) → **plus aucun scan de répertoire** | ✅ tient des **millions** de fichiers |
+
+⚠️ **Nuance qui fait la différence à l'examen :** le mode **par défaut** d'Auto Loader est le **directory listing**, **pas** le file notification. Le file notification est **optionnel** — Databricks le **recommande** pour les gros volumes et le décrit comme « plus performant et scalable que le directory listing ». Via les *file events* sur une external location, il demande **DBR 14.3 LTS+**.
+
+🧠 **Modèle mental :** *`COPY INTO` redemande « qu'y a-t-il dans le dossier ? » à chaque run · Auto Loader se fait **prévenir** quand un fichier arrive.*
 
 ## 2.5 Lakeflow Connect — l'ingest layer
 - **Lakeflow Connect** = le point d'entrée des données dans Databricks. Connecte une grande variété de sources :
@@ -302,7 +323,7 @@ df = (spark.readStream
 | | Spark natif (file source) | Auto Loader (Databricks) |
 |---|---|---|
 | Suivi incrémental | checkpoint | checkpoint + RocksDB |
-| Découverte de fichiers | listing du répertoire (coûteux à très grande échelle) | file notifications / listing optimisé (scalable, millions) |
+| Découverte de fichiers | listing du répertoire (coûteux à très grande échelle) | listing incrémental par défaut, **ou file notification** → scalable, millions (voir §2.4) |
 | Schéma | manuel | inférence + évolution auto |
 | Portabilité | ✅ tout cloud | ❌ Databricks-only |
 
@@ -774,3 +795,4 @@ L'architecture Databricks est coupée en deux. C'est **la** clé pour répondre 
   - [Create a Unity Catalog metastore](https://docs.databricks.com/aws/en/data-governance/unity-catalog/create-metastore) — A.2
   - [Databricks architecture overview](https://docs.databricks.com/aws/en/getting-started/overview) — A.3 (control plane / compute plane)
   - [Lakeflow Connect](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/) — A.5 (managed vs standard, ingestion gateway)
+- [Auto Loader file detection modes — Databricks docs](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes) — §2.4 : directory listing = défaut, file notification = optionnel et recommandé à grande échelle (file events : DBR 14.3 LTS+)
